@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Arena UFRGS - Quartel General</title>
   
   <!-- Configurações para Web App (PWA) -->
@@ -55,6 +55,8 @@
       /* Evita highlight azul chato ao clicar no celular */
       -webkit-tap-highlight-color: transparent; 
     }
+
+    .pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
 
     .royale-title {
       font-family: 'Cinzel', serif;
@@ -402,7 +404,7 @@
       if (!appData) return <div className="min-h-screen flex flex-col items-center justify-center text-amber-400 gap-4"><IconLoader size={40}/><h2 className="royale-title text-xl">Preparando Terreno...</h2></div>;
 
       return (
-        <div className="max-w-[1200px] mx-auto p-4 md:p-8 flex flex-col gap-8">
+        <div className="max-w-[1200px] mx-auto p-4 md:p-8 flex flex-col gap-8 pb-24 md:pb-8">
           {showTutorial && <TutorialModal onClose={() => { setShowTutorial(false); updateData('hasSeenTutorial', true); }} />}
           
           {/* HEADER */}
@@ -427,8 +429,8 @@
               </div>
             </div>
 
-            {/* TAB NAVIGATION */}
-            <nav className="flex bg-slate-900/50 p-1.5 rounded-xl border border-slate-800 w-full overflow-x-auto custom-scroll backdrop-blur-md">
+            {/* TAB NAVIGATION (DESKTOP) */}
+            <nav className="hidden md:flex bg-slate-900/50 p-1.5 rounded-xl border border-slate-800 w-full overflow-x-auto custom-scroll backdrop-blur-md">
               <button onClick={() => setActiveTab('deck')} className={`tab-btn px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'deck' ? 'bg-slate-800 active shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
                 <IconCalendar size={18}/> Deck (Macro)
               </button>
@@ -448,13 +450,37 @@
           </header>
 
           {/* CONTENT */}
-          <main className="pb-10">
+          <main className="flex-1">
             {activeTab === 'deck' && <DeckTab schedule={appData.schedule} missions={appData.missions} grades={appData.grades} updateData={updateData} />}
             {activeTab === 'missions' && <MissionsTab missions={appData.missions} updateData={updateData} />}
             {activeTab === 'arsenal' && <ArsenalTab lists={appData.lists} mistakes={appData.mistakes} updateData={updateData} />}
             {activeTab === 'lab' && <LabTab grades={appData.grades} spotifyLink={appData.spotifyLink} updateData={updateData} />}
             {activeTab === 'strategy' && <StrategyTab strategy={appData.strategy} updateData={updateData} />}
           </main>
+
+          {/* BOTTOM APP BAR (MOBILE) */}
+          <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#0B0F19]/95 backdrop-blur-lg border-t border-slate-800 z-40 flex justify-around items-center pt-2 pb-safe px-1 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+            <button onClick={() => setActiveTab('deck')} className={`flex flex-col items-center gap-1 p-2 transition-all flex-1 ${activeTab === 'deck' ? 'text-[#D4AF37]' : 'text-slate-500 hover:text-slate-300'}`}>
+              <IconCalendar size={20} className={activeTab === 'deck' ? 'drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]' : ''} />
+              <span className="text-[9px] font-bold tracking-widest uppercase">Deck</span>
+            </button>
+            <button onClick={() => setActiveTab('missions')} className={`flex flex-col items-center gap-1 p-2 transition-all flex-1 ${activeTab === 'missions' ? 'text-[#D4AF37]' : 'text-slate-500 hover:text-slate-300'}`}>
+              <IconSword size={20} className={activeTab === 'missions' ? 'drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]' : ''} />
+              <span className="text-[9px] font-bold tracking-widest uppercase">Missões</span>
+            </button>
+            <button onClick={() => setActiveTab('arsenal')} className={`flex flex-col items-center gap-1 p-2 transition-all flex-1 ${activeTab === 'arsenal' ? 'text-[#D4AF37]' : 'text-slate-500 hover:text-slate-300'}`}>
+              <IconBook size={20} className={activeTab === 'arsenal' ? 'drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]' : ''} />
+              <span className="text-[9px] font-bold tracking-widest uppercase">Treino</span>
+            </button>
+            <button onClick={() => setActiveTab('lab')} className={`flex flex-col items-center gap-1 p-2 transition-all flex-1 ${activeTab === 'lab' ? 'text-[#D4AF37]' : 'text-slate-500 hover:text-slate-300'}`}>
+              <IconFlask size={20} className={activeTab === 'lab' ? 'drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]' : ''} />
+              <span className="text-[9px] font-bold tracking-widest uppercase">Notas</span>
+            </button>
+            <button onClick={() => setActiveTab('strategy')} className={`flex flex-col items-center gap-1 p-2 transition-all flex-1 ${activeTab === 'strategy' ? 'text-[#D4AF37]' : 'text-slate-500 hover:text-slate-300'}`}>
+              <IconMap size={20} className={activeTab === 'strategy' ? 'drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]' : ''} />
+              <span className="text-[9px] font-bold tracking-widest uppercase">Futuro</span>
+            </button>
+          </nav>
         </div>
       );
     }
