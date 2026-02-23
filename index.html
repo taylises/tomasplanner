@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Arena UFRGS - Quartel General</title>
+  
+  <!-- Configurações para Web App (PWA) -->
+  <meta name="theme-color" content="#0B0F19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Arena UFRGS">
+  
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase Setup -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    window.FirebaseDeps = { 
+      initializeApp, getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
+      getFirestore, doc, setDoc, onSnapshot, collection 
+    };
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap');
+
+    :root {
+      --bg-base: #0B0F19; /* Deeper Dark Blue */
+      --panel-bg: rgba(21, 28, 44, 0.85);
+      --panel-border: #2A364F;
+      --gold-light: #F3E5AB;
+      --gold-main: #D4AF37;
+      --gold-dark: #AA8C2C;
+      --accent-blue: #3B82F6;
+      --accent-crimson: #EF4444;
+      --accent-green: #10B981;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      background-image: radial-gradient(circle at top, #162238 0%, transparent 50%);
+      color: #f8fafc;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      /* Evita highlight azul chato ao clicar no celular */
+      -webkit-tap-highlight-color: transparent; 
+    }
+
+    .royale-title {
+      font-family: 'Cinzel', serif;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold-main));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 1.5px;
+      text-shadow: 0 4px 15px rgba(212, 175, 55, 0.15);
+    }
+
+    .royale-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-top: 2px solid var(--gold-main);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    .royale-card {
+      background: linear-gradient(180deg, #1A233A 0%, #111827 100%);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .royale-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--accent-blue);
+      transition: background 0.3s;
+    }
+
+    .royale-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      border-color: #475569;
+    }
+
+    .royale-card:hover::before {
+      background: var(--gold-main);
+    }
+
+    .royale-btn-gold {
+      background: linear-gradient(135deg, var(--gold-main), var(--gold-dark));
+      color: #fff;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .royale-btn-gold:active { transform: scale(0.97); }
+    .royale-btn-gold:hover { filter: brightness(1.1); box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3); }
+
+    .royale-input {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .royale-input:focus {
+      outline: none;
+      border-color: var(--gold-main);
+      box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+    }
+
+    /* Custom Scrollbar */
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+
+    /* Calendar */
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      position: relative;
+      font-weight: 500;
+    }
+    .calendar-day:hover:not(.empty) { background-color: #1E293B; border-color: var(--gold-main); }
+    .calendar-day.active { background-color: rgba(59, 130, 246, 0.2); color: #60A5FA; border-color: var(--accent-blue); }
+    .calendar-day.today { border-color: var(--gold-main); color: var(--gold-light); font-weight: 700; background: rgba(212, 175, 55, 0.1); }
+    
+    .tab-btn {
+      position: relative;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      color: var(--gold-light);
+    }
+    .tab-btn.active::after {
+      content: ''; position: absolute; bottom: -4px; left: 20%; width: 60%; height: 2px;
+      background: var(--gold-main); border-radius: 2px;
+      box-shadow: 0 0 8px var(--gold-main);
+    }
+
+    .pomo-ring {
+      transition: stroke-dashoffset 1s linear;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // --- ÍCONES ELEGANTES ---
+    const IconCrown = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>;
+    const IconCalendar = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+    const IconSword = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M21 21l-2-2"/></svg>;
+    const IconTarget = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+    const IconFlask = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6"/><path d="M10 3v4.36l-4.58 8.1A2 2 0 0 0 7.15 19h9.7a2 2 0 0 0 1.73-2.54L14 7.36V3"/><path d="M14 15h.01"/><path d="M10 12h.01"/></svg>;
+    const IconBook = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
+    const IconMap = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>;
+    const IconPlus = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+    const IconTrash = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+    const IconClock = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+    const IconCalculator = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="8" y1="18" x2="16" y2="18"/></svg>;
+    const IconCheck = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+    const IconChevronLeft = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>;
+    const IconChevronRight = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
+    const IconMusic = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>;
+    const IconExternalLink = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
+    const IconLoader = ({ size=24, className="" }) => <svg className={`animate-spin ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
+    const IconHelp = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+    const IconInfo = ({ size=24, className="" }) => <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>;
+
+    // --- DADOS PADRÃO ---
+    const defaultData = {
+      schedule: { 'Seg': [], 'Ter': [], 'Qua': [], 'Qui': [], 'Sex': [], 'Sab': [] },
+      missions: [{ id: Date.now(), title: 'Configurar minha Arena', date: new Date().toISOString().split('T')[0], type: 'task', status: 'todo', weight: '', subtasks: [] }],
+      lists: [],
+      mistakes: [],
+      grades: [],
+      strategy: { 
+        future: 'Ex: Estagiar na área de Produção, Professor João de mentor...', 
+        longTerm: 'Ex: TCC sobre otimização de processos logísticos...',
+        realLife: 'Ex: Dormir 7h por noite, treinar 3x na semana (Burnout não melhora nota).' 
+      },
+      spotifyLink: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ',
+      hasSeenTutorial: false // Estado para o Tutorial
+    };
+
+    // ==========================================
+    // APP ROOT - FIREBASE INIT
+    // ==========================================
+    function App() {
+      const [fbReady, setFbReady] = useState(false);
+
+      useEffect(() => {
+        const checkFb = setInterval(() => {
+          if (window.FirebaseDeps) { clearInterval(checkFb); setFbReady(true); }
+        }, 50);
+        return () => clearInterval(checkFb);
+      }, []);
+
+      if (!fbReady) return <div className="min-h-screen flex flex-col items-center justify-center text-amber-400 gap-4"><IconLoader size={40}/><h2 className="royale-title text-xl">Iniciando Arena...</h2></div>;
+
+      return <AuthWrapper fbDeps={window.FirebaseDeps} />;
+    }
+
+    // ==========================================
+    // TELA DE LOGIN (PORTÕES DA ARENA)
+    // ==========================================
+    function LoginScreen({ fb }) {
+      const { auth, deps } = fb;
+      const [isLogin, setIsLogin] = useState(true);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+      const [loading, setLoading] = useState(false);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+          if (isLogin) {
+            await deps.signInWithEmailAndPassword(auth, email, password);
+          } else {
+            await deps.createUserWithEmailAndPassword(auth, email, password);
+          }
+        } catch (err) {
+          if (err.code === 'auth/invalid-credential') setError("Email ou senha incorretos.");
+          else if (err.code === 'auth/email-already-in-use') setError("Este email já está registrado.");
+          else if (err.code === 'auth/weak-password') setError("A senha deve ter no mínimo 6 caracteres.");
+          else if (err.code === 'auth/invalid-email') setError("Formato de email inválido.");
+          else setError("Erro: " + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+          <div className="royale-panel p-8 w-full max-w-md flex flex-col items-center shadow-2xl animate-in zoom-in-95">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-full border border-amber-500/40 shadow-[0_0_20px_rgba(212,175,55,0.2)] mb-6">
+              <IconSword size={56} className="text-[#D4AF37]" />
+            </div>
+            <h2 className="royale-title text-3xl mb-1 text-center">Portões da Arena</h2>
+            <p className="text-slate-400 text-xs md:text-sm font-semibold tracking-widest uppercase mb-8 text-center">Identifique-se para entrar</p>
+            
+            <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email do Guerreiro</label>
+                <input type="email" required className="royale-input w-full p-3 mt-1.5 text-sm font-medium" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Senha Secreta</label>
+                <input type="password" required className="royale-input w-full p-3 mt-1.5 text-sm font-medium" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+              
+              {error && <div className="p-3 mt-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold text-center">{error}</div>}
+              
+              <button type="submit" disabled={loading} className="royale-btn-gold w-full py-3.5 mt-4 text-sm font-bold uppercase tracking-widest flex justify-center items-center gap-2">
+                {loading ? <IconLoader size={18} /> : (isLogin ? 'Entrar na Batalha' : 'Forjar Nova Conta')}
+              </button>
+            </form>
+            
+            <div className="mt-8 border-t border-slate-700/50 w-full pt-5 text-center">
+              <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="text-[11px] text-slate-400 hover:text-[#D4AF37] font-bold uppercase tracking-wider transition-colors">
+                {isLogin ? 'Não tem conta? Aliste-se aqui' : 'Já é veterano? Fazer Login'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // AUTH WRAPPER
+    // ==========================================
+    function AuthWrapper({ fbDeps }) {
+      const { initializeApp, getAuth, signInWithCustomToken, onAuthStateChanged, getFirestore } = fbDeps;
+      const [user, setUser] = useState(null);
+      const [authLoading, setAuthLoading] = useState(true);
+      const [fbInstances, setFbInstances] = useState(null);
+
+      useEffect(() => {
+        const initFirebase = async () => {
+          try {
+            const firebaseConfig = {
+              apiKey: "AIzaSyCBuMow4IByFit4AAPrc4yd-c3PYUXk9xk",
+              authDomain: "tomasplanner.firebaseapp.com",
+              projectId: "tomasplanner",
+              storageBucket: "tomasplanner.firebasestorage.app",
+              messagingSenderId: "419181193585",
+              appId: "1:419181193585:web:69aedde15d3fc78afa2ed0",
+              measurementId: "G-SVSGNMEH5G"
+            };
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            const appId = "tomasplanner-v1";
+            
+            setFbInstances({ auth, db, appId, deps: fbDeps });
+
+            // Se existir token provisório do ambiente, tenta logar calado.
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              try { await signInWithCustomToken(auth, __initial_auth_token); } catch(e) { }
+            }
+          } catch (e) {
+            console.error("Erro na Inicialização Firebase:", e);
+          }
+        };
+
+        initFirebase();
+      }, []);
+
+      useEffect(() => {
+        if (!fbInstances) return;
+        const unsubscribe = onAuthStateChanged(fbInstances.auth, (currentUser) => {
+          setUser(currentUser);
+          setAuthLoading(false);
+        });
+        return () => unsubscribe();
+      }, [fbInstances]);
+
+      if (authLoading || !fbInstances) {
+        return <div className="min-h-screen flex flex-col items-center justify-center text-amber-400 gap-4"><IconLoader size={40}/><h2 className="royale-title text-xl">Verificando Credenciais...</h2></div>;
+      }
+
+      if (!user) {
+        return <LoginScreen fb={fbInstances} />;
+      }
+
+      return <MainDashboard fb={fbInstances} user={user} />;
+    }
+
+    // ==========================================
+    // MAIN DASHBOARD (DATA SYNC)
+    // ==========================================
+    function MainDashboard({ fb, user }) {
+      const { db, appId, deps } = fb;
+      const [appData, setAppData] = useState(null);
+      const [activeTab, setActiveTab] = useState('deck');
+      const [showTutorial, setShowTutorial] = useState(false);
+
+      useEffect(() => {
+        if (!user) return;
+        const docRef = deps.doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'main_v2');
+        
+        const unsubscribe = deps.onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = { ...defaultData, ...docSnap.data() };
+            setAppData(data);
+            if (data.hasSeenTutorial !== true) setShowTutorial(true);
+          } else {
+            deps.setDoc(docRef, defaultData);
+            setAppData(defaultData);
+            setShowTutorial(true);
+          }
+        }, (err) => console.error("Erro ao escutar dados:", err));
+
+        return () => unsubscribe();
+      }, [user, db, appId, deps]);
+
+      const updateData = useCallback(async (key, value) => {
+        if (!user) return;
+        setAppData(prev => ({ ...prev, [key]: value }));
+        const docRef = deps.doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'main_v2');
+        try { await deps.setDoc(docRef, { [key]: value }, { merge: true }); } 
+        catch (e) { console.error("Erro ao salvar:", e); }
+      }, [user, db, appId, deps]);
+
+      if (!appData) return <div className="min-h-screen flex flex-col items-center justify-center text-amber-400 gap-4"><IconLoader size={40}/><h2 className="royale-title text-xl">Preparando Terreno...</h2></div>;
+
+      return (
+        <div className="max-w-[1200px] mx-auto p-4 md:p-8 flex flex-col gap-8">
+          {showTutorial && <TutorialModal onClose={() => { setShowTutorial(false); updateData('hasSeenTutorial', true); }} />}
+          
+          {/* HEADER */}
+          <header className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-3 rounded-xl border border-amber-500/40 shadow-[0_0_15px_rgba(212,175,55,0.15)] relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-full bg-white/5 opacity-50"></div>
+                  <IconCrown size={36} className="text-[#D4AF37] relative z-10" />
+                </div>
+                <div>
+                  <h1 className="royale-title text-3xl md:text-4xl m-0 leading-tight">Arena UFRGS</h1>
+                  <p className="text-slate-400 text-xs md:text-sm font-semibold tracking-[0.2em] uppercase mt-1">Engenharia de Serviços</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end text-xs text-slate-500 font-medium">
+                <span className="hidden md:flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></div> Nuvem Ativa</span>
+                <span className="mt-1 flex items-center gap-2">
+                  <button onClick={() => setShowTutorial(true)} className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/30" title="Ver Tutorial"><IconHelp size={14} /> Ajuda</button>
+                  <button onClick={() => fb.deps.signOut(fb.auth)} className="text-red-400 hover:text-red-300 uppercase font-bold tracking-widest border-l border-slate-700 pl-2 ml-1">Sair</button>
+                </span>
+              </div>
+            </div>
+
+            {/* TAB NAVIGATION */}
+            <nav className="flex bg-slate-900/50 p-1.5 rounded-xl border border-slate-800 w-full overflow-x-auto custom-scroll backdrop-blur-md">
+              <button onClick={() => setActiveTab('deck')} className={`tab-btn px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'deck' ? 'bg-slate-800 active shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                <IconCalendar size={18}/> Deck (Macro)
+              </button>
+              <button onClick={() => setActiveTab('missions')} className={`tab-btn px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'missions' ? 'bg-slate-800 active shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                <IconSword size={18}/> Missões & Entregas
+              </button>
+              <button onClick={() => setActiveTab('arsenal')} className={`tab-btn px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'arsenal' ? 'bg-slate-800 active shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                <IconBook size={18}/> Treino & Revisão
+              </button>
+              <button onClick={() => setActiveTab('lab')} className={`tab-btn px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'lab' ? 'bg-slate-800 active shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                <IconFlask size={18}/> Laboratório (Média)
+              </button>
+              <button onClick={() => setActiveTab('strategy')} className={`tab-btn px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'strategy' ? 'bg-slate-800 active shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                <IconMap size={18}/> Estratégia Futura
+              </button>
+            </nav>
+          </header>
+
+          {/* CONTENT */}
+          <main className="pb-10">
+            {activeTab === 'deck' && <DeckTab schedule={appData.schedule} missions={appData.missions} grades={appData.grades} updateData={updateData} />}
+            {activeTab === 'missions' && <MissionsTab missions={appData.missions} updateData={updateData} />}
+            {activeTab === 'arsenal' && <ArsenalTab lists={appData.lists} mistakes={appData.mistakes} updateData={updateData} />}
+            {activeTab === 'lab' && <LabTab grades={appData.grades} spotifyLink={appData.spotifyLink} updateData={updateData} />}
+            {activeTab === 'strategy' && <StrategyTab strategy={appData.strategy} updateData={updateData} />}
+          </main>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // MODAL DE TUTORIAL (BOAS VINDAS)
+    // ==========================================
+    function TutorialModal({ onClose }) {
+      const [step, setStep] = useState(0);
+
+      const slides = [
+        {
+          title: "Bem-vindo à Arena, Amor! ❤️",
+          icon: <IconCrown size={40} className="text-[#D4AF37]" />,
+          content: "Preparei esse Quartel General exclusivo e estratégico para você dominar a Engenharia sem surtar. Aqui está um guia rápido de como usar suas novas ferramentas:"
+        },
+        {
+          title: "1. O Deck de Batalha",
+          icon: <IconCalendar size={40} className="text-blue-400" />,
+          content: "Na primeira aba, você vê o Calendário e suas Cadeiras da semana. 💡 Dica de Ouro: Clique em uma Cadeira cadastrada para abrir o QG dela! Lá você adiciona links do Moodle, ficha de estudo, e cadastra provas específicas."
+        },
+        {
+          title: "2. Missões e O Arsenal",
+          icon: <IconSword size={40} className="text-red-400" />,
+          content: "Na aba Missões, você controla os prazos e divide trabalhos grandes em etapas. Já no Arsenal, você cadastra suas listas de exercícios (não faça pela metade!) e anota no Banco de Erros o que você errou pra nunca mais repetir o erro na prova."
+        },
+        {
+          title: "3. Foco e Futuro",
+          icon: <IconFlask size={40} className="text-green-400" />,
+          content: "Use o Relógio do Construtor (Pomodoro) no Laboratório para focar. Lá também está o Oráculo de Notas, para saber se já passou ou se precisa correr atrás. Por fim, use a aba Estratégia para mapear estágios, TCC e, claro, seu descanso obrigatório!"
+        }
+      ];
+
+      return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="royale-panel p-6 md:p-8 w-full max-w-md shadow-2xl relative">
+            <div className="flex justify-center mb-6">
+              <div className="bg-slate-800/80 p-4 rounded-full border border-slate-600 shadow-inner">
+                {slides[step].icon}
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-center text-[#F3E5AB] mb-4 royale-title">{slides[step].title}</h3>
+            <p className="text-slate-300 text-center text-sm md:text-base leading-relaxed mb-8 min-h-[100px]">
+              {slides[step].content}
+            </p>
+            
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex gap-2">
+                {slides.map((_, i) => (
+                  <div key={i} className={`h-2 rounded-full transition-all ${i === step ? 'w-6 bg-[#D4AF37]' : 'w-2 bg-slate-700'}`}></div>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                {step > 0 && <button onClick={() => setStep(step - 1)} className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors bg-slate-800 rounded-lg">Voltar</button>}
+                {step < slides.length - 1 ? (
+                  <button onClick={() => setStep(step + 1)} className="royale-btn-gold px-6 py-2 text-sm uppercase tracking-wide">Avançar</button>
+                ) : (
+                  <button onClick={onClose} className="royale-btn-gold px-6 py-2 text-sm uppercase tracking-wide">Bora Dominar!</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // ABA 1: DECK (CALENDÁRIO + CADEIRAS)
+    // ==========================================
+    function DeckTab({ schedule, missions, grades, updateData }) {
+      const [editingClass, setEditingClass] = useState(null);
+      const [modalTab, setModalTab] = useState('info'); // info, missions, grades
+      const [newMissionTitle, setNewMissionTitle] = useState('');
+      const [newMissionDate, setNewMissionDate] = useState('');
+
+      const openClassModal = (day, isNew, obj) => {
+        setEditingClass({ day, isNew, obj });
+        setModalTab('info');
+        setNewMissionTitle('');
+        setNewMissionDate('');
+      };
+
+      const handleSaveClass = () => {
+        if (!editingClass.obj.name.trim()) return;
+        const dayArr = editingClass.isNew 
+          ? [...schedule[editingClass.day], editingClass.obj] 
+          : schedule[editingClass.day].map(c => c.id === editingClass.obj.id ? editingClass.obj : c);
+        
+        dayArr.sort((a, b) => a.time.localeCompare(b.time));
+        updateData('schedule', { ...schedule, [editingClass.day]: dayArr });
+        setEditingClass(null);
+      };
+
+      const handleDeleteClass = () => {
+        updateData('schedule', { ...schedule, [editingClass.day]: schedule[editingClass.day].filter(c => c.id !== editingClass.obj.id) });
+        setEditingClass(null);
+      };
+
+      const addClassMission = (e) => {
+        e.preventDefault();
+        if(!newMissionTitle.trim()) return;
+        const m = { id: Date.now(), title: `${editingClass.obj.name}: ${newMissionTitle}`, date: newMissionDate, type: 'exam', status: 'todo', weight: '', classId: editingClass.obj.id, subtasks: [] };
+        const updated = [...missions, m].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+        updateData('missions', updated);
+        setNewMissionTitle(''); setNewMissionDate('');
+      };
+      
+      const deleteClassMission = (id) => updateData('missions', missions.filter(m => m.id !== id));
+      const toggleClassMission = (id, currentStatus) => updateData('missions', missions.map(m => m.id === id ? {...m, status: currentStatus === 'done' ? 'todo' : 'done'} : m));
+
+      const classGrade = editingClass ? grades.find(g => g.classId === editingClass.obj.id) : null;
+      const activateGrades = () => updateData('grades', [...grades, { id: Date.now(), subject: editingClass.obj.name, n1: '', n2: '', goal: '6.0', classId: editingClass.obj.id }]);
+      const updateClassGrade = (field, value) => updateData('grades', grades.map(g => g.id === classGrade.id ? {...g, [field]: value} : g));
+
+      return (
+        <div className="flex flex-col gap-8 animate-in fade-in duration-300">
+          <div className="royale-panel p-5 md:p-7">
+            <h2 className="text-xl font-bold mb-5 text-white flex items-center gap-3 border-b border-slate-700/50 pb-3">
+              <span className="text-blue-400 bg-blue-400/10 p-2 rounded-lg"><IconCalendar size={20}/></span> Calendário da Temporada
+            </h2>
+            <CalendarWidget missions={missions} />
+          </div>
+
+          <div className="royale-panel p-5 md:p-7">
+            <h2 className="text-xl font-bold mb-6 text-white flex items-center gap-3 border-b border-slate-700/50 pb-3">
+              <span className="text-[#D4AF37] bg-[#D4AF37]/10 p-2 rounded-lg"><IconSword size={20}/></span> Deck de Batalha (Cadeiras)
+              <span className="ml-auto text-[10px] text-slate-400 font-normal uppercase tracking-widest hidden md:inline">*Clique na cadeira para abrir o QG</span>
+            </h2>
+            <p className="text-xs text-slate-400 mb-4 md:hidden italic text-center w-full">*Toque no card da cadeira para abrir as Opções e Provas.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+              {Object.keys(schedule).map(day => (
+                <div key={day} className="flex flex-col gap-3">
+                  <div className="bg-slate-800/80 py-2.5 text-center rounded-lg border border-slate-700 shadow-inner">
+                    <span className="text-[#F3E5AB] font-bold uppercase tracking-widest text-sm">{day}</span>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {schedule[day].map(c => {
+                      const classMissionsCount = missions.filter(m => m.classId === c.id && m.status !== 'done').length;
+                      return (
+                        <div key={c.id} onClick={() => openClassModal(day, false, c)} className="royale-card p-4 cursor-pointer group hover:bg-slate-800/50">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-bold px-2 py-1 rounded bg-slate-800 text-blue-300 border border-slate-700">{c.time}</span>
+                            {c.moodleLink && (
+                              <a href={c.moodleLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} title="Abrir Moodle" className="text-slate-400 hover:text-blue-400 transition-colors bg-slate-800 p-1 rounded-md border border-slate-700 hover:border-blue-500">
+                                <IconExternalLink size={14}/>
+                              </a>
+                            )}
+                          </div>
+                          <div className="font-bold text-sm text-slate-100 mb-2 leading-snug">{c.name}</div>
+                          <div className="flex flex-col gap-1">
+                            {c.teacher && <div className="text-[11px] text-slate-400 flex items-center gap-1 truncate">👨‍🏫 {c.teacher}</div>}
+                            {c.room && <div className="text-[11px] text-slate-400 flex items-center gap-1 truncate">📍 {c.room}</div>}
+                          </div>
+                          {(classMissionsCount > 0 || c.studySheet) && (
+                            <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700/50 flex-wrap">
+                              {classMissionsCount > 0 && <span className="text-[10px] font-bold bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded border border-red-500/20">⚔️ {classMissionsCount} Tarefa{classMissionsCount > 1 ? 's' : ''}</span>}
+                              {c.studySheet && <span className="text-[10px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20">📄 Ficha</span>}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                    <button onClick={() => openClassModal(day, true, { id: Date.now().toString(), name: '', time: '08:30', room: '', teacher: '', moodleLink: '', studySheet: '' })} className="py-3 border-2 border-dashed border-slate-700 rounded-lg text-slate-500 hover:text-slate-300 hover:border-slate-500 hover:bg-slate-800/50 transition-all text-sm font-semibold flex items-center justify-center gap-2">
+                      <IconPlus size={16} /> Nova
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {editingClass && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="royale-panel p-6 md:p-8 w-full max-w-md animate-in zoom-in-95 shadow-2xl flex flex-col max-h-[90vh]">
+                <h3 className="text-xl font-bold text-[#F3E5AB] mb-4 flex items-center gap-2">
+                  <IconSword size={20} className="text-[#D4AF37]" /> {editingClass.isNew ? 'Forjar Matéria' : 'QG da Matéria'}
+                </h3>
+
+                {!editingClass.isNew && (
+                  <div className="flex border-b border-slate-700/50 mb-5 w-full">
+                    <button onClick={() => setModalTab('info')} className={`flex-1 pb-2 px-1 text-[11px] uppercase tracking-wider font-bold border-b-2 transition-colors ${modalTab === 'info' ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>📄 Info</button>
+                    <button onClick={() => setModalTab('missions')} className={`flex-1 pb-2 px-1 text-[11px] uppercase tracking-wider font-bold border-b-2 transition-colors ${modalTab === 'missions' ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>⚔️ Missões</button>
+                    <button onClick={() => setModalTab('grades')} className={`flex-1 pb-2 px-1 text-[11px] uppercase tracking-wider font-bold border-b-2 transition-colors ${modalTab === 'grades' ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>📊 Notas</button>
+                  </div>
+                )}
+                
+                <div className="overflow-y-auto custom-scroll pr-1 flex-1">
+                  {modalTab === 'info' && (
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Disciplina</label>
+                        <input type="text" className="royale-input w-full p-2.5 mt-1 text-sm font-medium" placeholder="Ex: Pesquisa Operacional" value={editingClass.obj.name} onChange={e => setEditingClass({...editingClass, obj: {...editingClass.obj, name: e.target.value}})} autoFocus />
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Professor</label>
+                          <input type="text" className="royale-input w-full p-2.5 mt-1 text-sm font-medium" placeholder="Mestre" value={editingClass.obj.teacher || ''} onChange={e => setEditingClass({...editingClass, obj: {...editingClass.obj, teacher: e.target.value}})} />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Sala</label>
+                          <input type="text" className="royale-input w-full p-2.5 mt-1 text-sm font-medium" placeholder="Ex: Prédio 43" value={editingClass.obj.room} onChange={e => setEditingClass({...editingClass, obj: {...editingClass.obj, room: e.target.value}})} />
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horário</label>
+                          <input type="time" className="royale-input w-full p-2.5 mt-1 text-sm font-medium text-slate-300" value={editingClass.obj.time} onChange={e => setEditingClass({...editingClass, obj: {...editingClass.obj, time: e.target.value}})} />
+                        </div>
+                        <div className="flex-2 w-full">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Link do Moodle / Aulas</label>
+                          <div className="flex gap-2">
+                            <input type="url" className="royale-input w-full p-2.5 mt-1 text-sm font-medium" placeholder="https://moodle..." value={editingClass.obj.moodleLink || ''} onChange={e => setEditingClass({...editingClass, obj: {...editingClass.obj, moodleLink: e.target.value}})} />
+                            {editingClass.obj.moodleLink && <a href={editingClass.obj.moodleLink} target="_blank" rel="noreferrer" className="mt-1 flex items-center justify-center px-3 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 border border-blue-500/30"><IconExternalLink size={16}/></a>}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Ficha de Estudo / Anotações</label>
+                        <textarea className="royale-input w-full p-3 mt-1 text-sm font-medium resize-none min-h-[100px]" placeholder="Ementa, regras de avaliação, links úteis da cadeira..." value={editingClass.obj.studySheet || ''} onChange={e => setEditingClass({...editingClass, obj: {...editingClass.obj, studySheet: e.target.value}})}></textarea>
+                      </div>
+                    </div>
+                  )}
+
+                  {modalTab === 'missions' && !editingClass.isNew && (
+                    <div className="flex flex-col gap-4">
+                      <form onSubmit={addClassMission} className="flex gap-2 items-center bg-slate-900/50 p-2 rounded-lg border border-slate-700">
+                        <input type="text" placeholder="Nome da Avaliação" className="bg-transparent border-none outline-none text-sm text-white flex-1 min-w-0 px-2" value={newMissionTitle} onChange={e=>setNewMissionTitle(e.target.value)} required/>
+                        <input type="date" className="bg-transparent border-none outline-none text-xs text-slate-400 w-28" value={newMissionDate} onChange={e=>setNewMissionDate(e.target.value)} required/>
+                        <button type="submit" className="text-amber-400 hover:text-amber-300 p-1 bg-amber-400/10 rounded"><IconPlus size={16}/></button>
+                      </form>
+                      
+                      <div className="flex flex-col gap-2">
+                        {missions.filter(m => m.classId === editingClass.obj.id).length === 0 && <p className="text-xs text-center text-slate-500 my-4">Nenhuma missão/prova vinculada a esta matéria.</p>}
+                        {missions.filter(m => m.classId === editingClass.obj.id).map(m => (
+                           <div key={m.id} className={`flex items-center gap-3 p-2.5 rounded-lg border ${m.status==='done' ? 'bg-slate-800/30 border-slate-700 opacity-60' : 'bg-slate-800 border-slate-600'}`}>
+                              <button onClick={() => toggleClassMission(m.id, m.status)} className={`shrink-0 w-5 h-5 rounded flex items-center justify-center border-2 ${m.status==='done'?'bg-green-500 border-green-500 text-white':'border-slate-500 text-transparent'}`}><IconCheck size={12}/></button>
+                              <div className="flex-1 flex flex-col truncate">
+                                <span className={`text-sm font-bold truncate ${m.status==='done'?'line-through text-slate-500':'text-slate-200'}`}>{m.title.replace(`${editingClass.obj.name}: `, '')}</span>
+                                {m.date && <span className="text-[10px] text-slate-400">{m.date.split('-').reverse().join('/')}</span>}
+                              </div>
+                              <button type="button" onClick={() => deleteClassMission(m.id)} className="text-slate-500 hover:text-red-400 p-1"><IconTrash size={14}/></button>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {modalTab === 'grades' && !editingClass.isNew && (
+                    <div className="flex flex-col gap-4">
+                       {!classGrade ? (
+                          <div className="text-center p-6 border border-dashed border-slate-600 rounded-xl my-4">
+                            <IconCalculator size={32} className="mx-auto text-slate-500 mb-3"/>
+                            <p className="text-sm text-slate-400 mb-4">O Oráculo não está rastreando esta matéria ainda.</p>
+                            <button onClick={activateGrades} className="royale-btn-blue px-4 py-2 text-sm font-bold rounded-lg uppercase tracking-wider w-full">Ativar Oráculo de Notas</button>
+                          </div>
+                       ) : (
+                          <div className="bg-slate-800/50 p-5 rounded-xl border border-slate-600 flex flex-col gap-4">
+                            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Meta de Aprovação</span>
+                              <input type="number" step="0.1" className="royale-input w-16 p-1.5 text-center text-sm font-bold bg-slate-900" value={classGrade.goal || '6.0'} onChange={e => updateClassGrade('goal', e.target.value)} />
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex-1 flex flex-col gap-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Nota 1</span><input type="number" step="0.1" className="royale-input w-full p-2.5 text-center text-base font-bold" placeholder="-" value={classGrade.n1} onChange={e => updateClassGrade('n1', e.target.value)} /></div>
+                              <div className="flex-1 flex flex-col gap-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Nota 2</span><input type="number" step="0.1" className="royale-input w-full p-2.5 text-center text-base font-bold" placeholder="-" value={classGrade.n2} onChange={e => updateClassGrade('n2', e.target.value)} /></div>
+                            </div>
+                            {(() => {
+                              const v1 = parseFloat(classGrade.n1); const v2 = parseFloat(classGrade.n2); const goal = parseFloat(classGrade.goal) || 6.0;
+                              const media = (!isNaN(v1) && !isNaN(v2)) ? ((v1 + v2) / 2).toFixed(1) : '-';
+                              const isPassing = media !== '-' && parseFloat(media) >= goal;
+                              return (
+                                <div className={`mt-2 flex items-center justify-center p-3 rounded-lg font-bold text-sm border shadow-inner ${media==='-'?'bg-slate-900 border-slate-700 text-slate-500':isPassing?'bg-green-500/10 border-green-500/30 text-green-400':'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                                  {media !== '-' ? `Média Atual: ${media}` : 'Aguardando Avaliações'}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                       )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-700/50">
+                  {!editingClass.isNew ? <button onClick={handleDeleteClass} className="text-red-400 hover:text-white p-2.5 rounded-lg hover:bg-red-500/20 transition-colors bg-red-500/10" title="Remover Matéria do Deck"><IconTrash size={20}/></button> : <div></div>}
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditingClass(null)} className="px-5 py-2.5 text-sm font-semibold text-slate-400 hover:text-white transition-colors bg-slate-800 rounded-lg">Fechar</button>
+                    <button onClick={handleSaveClass} className="royale-btn-gold px-6 py-2.5 text-sm uppercase tracking-wide">Salvar Info</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- CALENDAR WIDGET ---
+    function CalendarWidget({ missions }) {
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const year = currentDate.getFullYear(); const month = currentDate.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      
+      const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      const pad = (n) => n.toString().padStart(2, '0');
+
+      const blanks = Array.from({ length: firstDayIndex }, (_, i) => i);
+      const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+      const currentMonthStr = `${year}-${pad(month + 1)}`;
+      const monthMissions = missions
+        .filter(m => m.date && m.date.startsWith(currentMonthStr))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      return (
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 max-w-lg">
+            <div className="flex justify-between items-center mb-6 px-1">
+              <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-lg border border-slate-700 hover:border-[#D4AF37]"><IconChevronLeft size={20} /></button>
+              <h3 className="text-lg font-bold text-[#F3E5AB] uppercase tracking-widest">{monthNames[month]} {year}</h3>
+              <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-lg border border-slate-700 hover:border-[#D4AF37]"><IconChevronRight size={20} /></button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 md:gap-2">
+              {dayNames.map(d => <div key={d} className="text-center text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{d}</div>)}
+              {blanks.map(b => <div key={`blank-${b}`} className="calendar-day empty"></div>)}
+              {days.map(d => {
+                const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+                const dayMissions = missions.filter(m => m.date === dateStr);
+                const hasExam = dayMissions.some(m => m.type === 'exam' && m.status !== 'done');
+                const hasTask = dayMissions.some(m => (m.type === 'task' || m.type === 'project') && m.status !== 'done');
+                const isToday = dateStr === new Date().toISOString().split('T')[0];
+
+                return (
+                  <div key={d} className={`calendar-day text-sm md:text-base bg-slate-800/40 text-slate-300 ${isToday ? 'today' : ''}`}>
+                    <span className="z-10">{d}</span>
+                    {(hasExam || hasTask) && (
+                      <div className="absolute bottom-1.5 flex gap-1">
+                        {hasExam && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></div>}
+                        {hasTask && <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.8)]"></div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex-1 bg-slate-900/80 border border-slate-700/60 rounded-xl p-5 md:p-6 flex flex-col shadow-inner">
+            <h4 className="text-[#D4AF37] font-bold text-sm uppercase tracking-widest mb-4 border-b border-slate-800 pb-3 flex items-center gap-2"><IconTarget size={16}/> Eventos de {monthNames[month]}</h4>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scroll">
+              {monthMissions.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-2"><IconCheck size={32} className="opacity-30 text-green-500/50" /><p className="text-sm font-medium">Nenhuma missão para este mês.</p></div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {monthMissions.map(m => {
+                    const mDay = m.date.split('-')[2];
+                    return (
+                      <div key={m.id} className={`p-3.5 rounded-lg border text-sm flex flex-col gap-1.5 transition-all ${m.status==='done' ? 'bg-slate-800/30 border-slate-800 opacity-50' : m.type === 'exam' ? 'bg-[#3b070c]/40 border-red-900/50' : 'bg-slate-800/80 border-slate-600 shadow-md'}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="shrink-0 text-[10px] font-bold bg-slate-900 text-[#D4AF37] px-2 py-1 rounded border border-slate-700 shadow-sm">{mDay}/{pad(month + 1)}</span>
+                            <span className={`font-semibold leading-snug ${m.status==='done' ? 'line-through text-slate-500' : 'text-slate-100'}`}>{m.title}</span>
+                          </div>
+                          {m.type === 'exam' && m.status!=='done' && <span className="shrink-0 ml-2 text-[10px] font-bold tracking-wider bg-red-500/20 text-red-400 px-2 py-1 rounded border border-red-500/30 uppercase">Avaliação</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // ABA 2: MISSÕES & ENTREGAS (Controle Real)
+    // ==========================================
+    function MissionsTab({ missions, updateData }) {
+      const [newTitle, setNewTitle] = useState('');
+      const [newDate, setNewDate] = useState('');
+      const [newType, setNewType] = useState('task');
+      const [newWeight, setNewWeight] = useState('');
+
+      const addMission = (e) => {
+        e.preventDefault();
+        if (!newTitle.trim()) return;
+        const m = { id: Date.now(), title: newTitle, date: newDate, type: newType, status: 'todo', weight: newWeight, subtasks: [] };
+        const updated = [...missions, m].sort((a, b) => { if(!a.date) return 1; if(!b.date) return -1; return a.date.localeCompare(b.date); });
+        updateData('missions', updated);
+        setNewTitle(''); setNewDate(''); setNewWeight('');
+      };
+
+      const updateMission = (id, field, value) => {
+        updateData('missions', missions.map(m => m.id === id ? {...m, [field]: value} : m));
+      };
+      const deleteMission = (id) => updateData('missions', missions.filter(m => m.id !== id));
+
+      const addSubtask = (missionId) => {
+        const text = prompt('Nome da Etapa (Ex: Pesquisa, Cálculo, Revisão):');
+        if(text) {
+          updateData('missions', missions.map(m => m.id === missionId ? {...m, subtasks: [...(m.subtasks||[]), {id: Date.now(), title: text, done: false}]} : m));
+        }
+      };
+      const toggleSubtask = (missionId, subId) => {
+        updateData('missions', missions.map(m => m.id === missionId ? {...m, subtasks: m.subtasks.map(s => s.id === subId ? {...s, done: !s.done} : s)} : m));
+      };
+
+      const formatDate = (dateStr) => { if(!dateStr) return ''; const [y, m, d] = dateStr.split('-'); return `${d}/${m}`; };
+
+      const activeMissions = missions.filter(m => m.status !== 'done');
+      const completedMissions = missions.filter(m => m.status === 'done');
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+          <div className="royale-panel p-6 lg:col-span-1 h-fit">
+            <h2 className="text-lg font-bold mb-5 text-white flex items-center gap-2 border-b border-slate-700/50 pb-3">
+              <span className="text-red-400 bg-red-400/10 p-1.5 rounded-lg"><IconTarget size={18}/></span> Convocar Missão
+            </h2>
+            <form onSubmit={addMission} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Disciplina / Objetivo</label>
+                <input type="text" placeholder="Ex: P1 Mecânica dos Fluidos" className="royale-input w-full p-3 mt-1.5 text-sm font-medium" value={newTitle} onChange={e=>setNewTitle(e.target.value)} required/>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Prazo</label>
+                  <input type="date" className="royale-input w-full p-3 mt-1.5 text-sm font-medium text-slate-300" value={newDate} onChange={e=>setNewDate(e.target.value)} />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Classificação</label>
+                  <select className="royale-input w-full p-3 mt-1.5 text-sm font-medium" value={newType} onChange={e=>setNewType(e.target.value)}>
+                    <option value="task">Rotina</option>
+                    <option value="project">Trabalho/Projeto</option>
+                    <option value="exam">Avaliação</option>
+                  </select>
+                </div>
+              </div>
+              {(newType === 'exam' || newType === 'project') && (
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Peso na Nota (Ex: Vale 30%)</label>
+                  <input type="text" placeholder="Estratégia > Desespero" className="royale-input w-full p-3 mt-1.5 text-sm font-medium" value={newWeight} onChange={e=>setNewWeight(e.target.value)} />
+                </div>
+              )}
+              <button type="submit" className="royale-btn-gold w-full py-3 mt-2 flex justify-center items-center gap-2 uppercase tracking-wide text-sm">
+                <IconPlus size={18}/> Adicionar ao Quadro
+              </button>
+            </form>
+          </div>
+
+          <div className="royale-panel p-6 lg:col-span-2 flex flex-col h-[700px]">
+            <h2 className="text-lg font-bold mb-5 text-white flex items-center gap-2 border-b border-slate-700/50 pb-3">
+              <span className="text-blue-400 bg-blue-400/10 p-1.5 rounded-lg"><IconSword size={18}/></span> Controle de Entregas
+            </h2>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-6">
+              <div>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 pl-1">Em Andamento ({activeMissions.length})</h3>
+                <div className="flex flex-col gap-3">
+                  {activeMissions.map(m => (
+                    <div key={m.id} className={`flex flex-col gap-3 p-4 rounded-xl border ${m.type === 'exam' ? 'bg-[#3b070c]/20 border-red-900/50' : 'bg-slate-800/60 border-slate-600'} shadow-md transition-all`}>
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            {m.type === 'exam' && <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>}
+                            <span className="font-bold text-sm text-slate-100">{m.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                            {m.date && <span className="text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{formatDate(m.date)}</span>}
+                            {m.weight && <span className="text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">Peso: {m.weight}</span>}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <select className="royale-input text-xs font-bold py-1.5 px-2 bg-slate-900" value={m.status} onChange={(e)=>updateMission(m.id, 'status', e.target.value)}>
+                            <option value="todo">Não Comecei</option>
+                            <option value="doing">Estudando/Fazendo</option>
+                            <option value="review">Em Revisão</option>
+                            <option value="done">Concluído</option>
+                          </select>
+                          <button onClick={() => deleteMission(m.id)} className="text-slate-500 hover:text-red-400 p-1"><IconTrash size={16}/></button>
+                        </div>
+                      </div>
+
+                      {/* Subtasks for Projects/Tasks */}
+                      {(m.type === 'project' || m.type === 'task') && (
+                        <div className="mt-2 pt-3 border-t border-slate-700/50">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Etapas do Projeto</span>
+                            <button onClick={()=>addSubtask(m.id)} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">+ Add Etapa</button>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            {(m.subtasks||[]).map(s => (
+                              <div key={s.id} className="flex items-center gap-2">
+                                <button onClick={()=>toggleSubtask(m.id, s.id)} className={`w-4 h-4 rounded-sm border flex items-center justify-center ${s.done?'bg-green-500 border-green-500 text-white':'border-slate-500 text-transparent'}`}><IconCheck size={10}/></button>
+                                <span className={`text-xs ${s.done?'text-slate-500 line-through':'text-slate-300'}`}>{s.title}</span>
+                              </div>
+                            ))}
+                            {(!m.subtasks || m.subtasks.length === 0) && <p className="text-[10px] text-slate-500 italic">Divida para conquistar. Nenhum passo criado.</p>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // ABA 3: ARSENAL (Tracker de Listas e Erros)
+    // ==========================================
+    function ArsenalTab({ lists, mistakes, updateData }) {
+      const addList = () => {
+        const title = prompt("Qual o nome da Lista/Matéria?");
+        const total = prompt("Quantas questões tem no total?");
+        if (title && total && !isNaN(total)) {
+          updateData('lists', [...lists, { id: Date.now(), title, total: parseInt(total), done: 0, diff: 'media', review: false }]);
+        }
+      };
+      const updateList = (id, field, value) => updateData('lists', lists.map(l => l.id === id ? {...l, [field]: value} : l));
+      const deleteList = (id) => updateData('lists', lists.filter(l => l.id !== id));
+
+      const addMistake = () => {
+        const subject = prompt("Qual a disciplina/assunto?");
+        if(subject) {
+          updateData('mistakes', [...mistakes, { id: Date.now(), subject, problem: '', mistake: '', correct: '' }]);
+        }
+      };
+      const updateMistake = (id, field, value) => updateData('mistakes', mistakes.map(m => m.id === id ? {...m, [field]: value} : m));
+      const deleteMistake = (id) => updateData('mistakes', mistakes.filter(m => m.id !== id));
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+          
+          {/* Tracker de Listas */}
+          <div className="royale-panel p-6 flex flex-col h-[600px]">
+            <h2 className="text-lg font-bold mb-4 text-white flex items-center justify-between border-b border-slate-700/50 pb-3">
+              <span className="flex items-center gap-2"><span className="text-blue-400 bg-blue-400/10 p-1.5 rounded-lg"><IconBook size={18} /></span> Tracker de Listas</span>
+              <button onClick={addList} className="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-lg border border-slate-600"><IconPlus size={18}/></button>
+            </h2>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-4">
+              {lists.length === 0 && <p className="text-slate-500 text-sm text-center mt-4">Resolver lista pela metade é autoengano. Cadastre aqui.</p>}
+              {lists.map(l => {
+                const percent = Math.min(100, Math.round((l.done / l.total) * 100)) || 0;
+                return (
+                  <div key={l.id} className={`bg-slate-800/50 p-4 rounded-xl border ${l.review ? 'border-amber-500/50' : 'border-slate-600'} flex flex-col gap-3 relative`}>
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-sm text-slate-100">{l.title}</span>
+                      <button onClick={()=>deleteList(l.id)} className="text-slate-600 hover:text-red-400"><IconTrash size={14}/></button>
+                    </div>
+                    
+                    {/* Barra de Progresso */}
+                    <div>
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        <span>Progresso</span>
+                        <span>{l.done} / {l.total} ({percent}%)</span>
+                      </div>
+                      <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                        <div className="h-full bg-blue-500 transition-all duration-300" style={{width: `${percent}%`}}></div>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button onClick={()=>updateList(l.id, 'done', Math.max(0, l.done-1))} className="px-2 py-1 bg-slate-700 rounded text-xs">-</button>
+                        <button onClick={()=>updateList(l.id, 'done', Math.min(l.total, l.done+1))} className="px-2 py-1 bg-slate-700 rounded text-xs">+</button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-2 pt-3 border-t border-slate-700/50">
+                      <select className="royale-input text-xs font-bold py-1 px-2 bg-slate-900 flex-1" value={l.diff} onChange={e=>updateList(l.id, 'diff', e.target.value)}>
+                        <option value="facil">Fácil</option>
+                        <option value="media">Média</option>
+                        <option value="impossivel">Impossível</option>
+                      </select>
+                      <button onClick={()=>updateList(l.id, 'review', !l.review)} className={`text-[10px] font-bold uppercase px-2 rounded border ${l.review ? 'bg-amber-500/20 text-amber-400 border-amber-500/50' : 'bg-slate-900 text-slate-500 border-slate-700'}`}>
+                        Revisar Antes da Prova
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Banco de Erros */}
+          <div className="royale-panel p-6 flex flex-col h-[600px]">
+            <h2 className="text-lg font-bold mb-4 text-white flex items-center justify-between border-b border-slate-700/50 pb-3">
+              <span className="flex items-center gap-2"><span className="text-red-400 bg-red-400/10 p-1.5 rounded-lg"><IconTarget size={18} /></span> Banco de Erros</span>
+              <button onClick={addMistake} className="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-lg border border-slate-600"><IconPlus size={18}/></button>
+            </h2>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-4">
+              {mistakes.length === 0 && <p className="text-slate-500 text-sm text-center mt-4">Erro repetido é falta de sistema, não de inteligência. Anote seus erros.</p>}
+              {mistakes.map(m => (
+                <div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-red-900/30 flex flex-col gap-3 relative">
+                   <div className="flex justify-between items-center mb-1">
+                      <input type="text" className="bg-transparent font-bold text-sm text-[#F3E5AB] outline-none w-full" value={m.subject} onChange={e=>updateMistake(m.id, 'subject', e.target.value)} placeholder="Matéria/Assunto" />
+                      <button onClick={()=>deleteMistake(m.id)} className="text-slate-600 hover:text-red-400 ml-2"><IconTrash size={14}/></button>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">O Problema (Questão)</label>
+                      <textarea className="royale-input w-full p-2 mt-1 text-xs resize-none" rows="1" value={m.problem} onChange={e=>updateMistake(m.id, 'problem', e.target.value)} placeholder="Resumo da questão..."></textarea>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Onde eu errei</label>
+                      <textarea className="royale-input w-full p-2 mt-1 text-xs resize-none border-red-900/50" rows="1" value={m.mistake} onChange={e=>updateMistake(m.id, 'mistake', e.target.value)} placeholder="Esqueci de converter a unidade..."></textarea>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-green-400 uppercase tracking-widest">Raciocínio Correto</label>
+                      <textarea className="royale-input w-full p-2 mt-1 text-xs resize-none border-green-900/50" rows="2" value={m.correct} onChange={e=>updateMistake(m.id, 'correct', e.target.value)} placeholder="A fórmula certa era..."></textarea>
+                    </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // ABA 4: LAB (POMODORO, SPOTIFY, NOTAS COM METAS)
+    // ==========================================
+    function LabTab({ grades, spotifyLink, updateData }) {
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-300">
+          <div className="flex flex-col gap-8">
+            <PomodoroWidget />
+            <div className="royale-panel p-6">
+              <h2 className="text-lg font-bold mb-4 text-white flex items-center justify-between border-b border-slate-700/50 pb-3">
+                <span className="flex items-center gap-2"><span className="text-green-400 bg-green-400/10 p-1.5 rounded-lg"><IconMusic size={18}/></span> Sintonia Real</span>
+                <button onClick={() => { 
+                  const url = prompt("Cole o link da Playlist do Spotify:"); 
+                  if(url) { let f = url.match(/src="([^"]+)"/) ? url.match(/src="([^"]+)"/)[1] : url.replace('/playlist/', '/embed/playlist/'); updateData('spotifyLink', f); } 
+                }} className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-[#D4AF37] border border-slate-600 px-3 py-1.5 rounded">Mudar Feitiço</button>
+              </h2>
+              <div className="rounded-xl overflow-hidden h-[152px] bg-slate-900 border border-slate-700 shadow-inner"><iframe src={spotifyLink} width="100%" height="152" style={{border:0}} allow="autoplay" loading="lazy"></iframe></div>
+            </div>
+          </div>
+
+          {/* Oráculo de Notas c/ Metas */}
+          <div className="royale-panel p-6 flex flex-col h-[600px]">
+            <h2 className="text-lg font-bold mb-5 text-white flex items-center justify-between border-b border-slate-700/50 pb-3">
+              <span className="flex items-center gap-2"><span className="text-blue-400 bg-blue-400/10 p-1.5 rounded-lg"><IconCalculator size={18} /></span> Oráculo de Notas</span>
+              <button onClick={() => updateData('grades', [...grades, { id: Date.now(), subject: 'Nova Matéria', n1: '', n2: '', goal: '6.0' }])} className="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-lg border border-slate-600"><IconPlus size={18}/></button>
+            </h2>
+            
+            <div className="flex flex-col gap-4 overflow-y-auto pr-2 custom-scroll flex-1">
+              {grades.length === 0 && <p className="text-slate-500 text-sm text-center mt-10 font-medium">Cadastre as matérias para controlar se vai passar ou reprovar.</p>}
+              {grades.map(g => {
+                const v1 = parseFloat(g.n1); const v2 = parseFloat(g.n2); const goal = parseFloat(g.goal) || 6.0;
+                const media = (!isNaN(v1) && !isNaN(v2)) ? ((v1 + v2) / 2).toFixed(1) : '-'; 
+                const isPassing = media !== '-' && parseFloat(media) >= goal;
+
+                return (
+                  <div key={g.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-600 flex flex-col gap-3 shadow-md relative overflow-hidden group">
+                    <div className={`absolute top-0 left-0 w-1 h-full ${media === '-' ? 'bg-slate-600' : isPassing ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div className="flex justify-between items-center pl-2">
+                      <input type="text" className="bg-transparent text-sm font-bold text-slate-100 outline-none w-full" placeholder="Nome da Matéria" value={g.subject} onChange={e => updateData('grades', grades.map(x=>x.id===g.id?{...x,subject:e.target.value}:x))} />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">Meta:</span>
+                        <input type="number" step="0.1" className="royale-input w-12 p-1 text-center text-xs font-bold bg-slate-900" value={g.goal || '6.0'} onChange={e => updateData('grades', grades.map(x=>x.id===g.id?{...x,goal:e.target.value}:x))} />
+                        <button onClick={() => updateData('grades', grades.filter(x=>x.id!==g.id))} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><IconTrash size={14}/></button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 pl-2">
+                      <div className="flex-1 flex flex-col gap-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">N1</span><input type="number" step="0.1" className="royale-input w-full p-2 text-center text-sm font-medium" placeholder="-" value={g.n1} onChange={e => updateData('grades', grades.map(x=>x.id===g.id?{...x,n1:e.target.value}:x))} /></div>
+                      <div className="flex-1 flex flex-col gap-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">N2</span><input type="number" step="0.1" className="royale-input w-full p-2 text-center text-sm font-medium" placeholder="-" value={g.n2} onChange={e => updateData('grades', grades.map(x=>x.id===g.id?{...x,n2:e.target.value}:x))} /></div>
+                      <div className="flex-1 flex flex-col justify-end h-full pt-4">
+                        <div className={`flex items-center justify-center p-2 rounded-lg font-bold text-sm border shadow-inner ${media==='-'?'bg-slate-900 border-slate-700 text-slate-500':isPassing?'bg-green-500/10 border-green-500/30 text-green-400':'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                          {media !== '-' ? `Média: ${media}` : 'Pendente'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // ABA 5: ESTRATÉGIA FUTURA
+    // ==========================================
+    function StrategyTab({ strategy, updateData }) {
+      const handleChange = (field, value) => updateData('strategy', { ...strategy, [field]: value });
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+          <div className="royale-panel p-6 flex flex-col gap-4 shadow-lg lg:col-span-1">
+            <h2 className="text-lg font-bold text-[#F3E5AB] flex items-center gap-2 border-b border-slate-700/50 pb-3">
+              <IconMap size={20} className="text-[#D4AF37]"/> Visão Futura & Estágios
+            </h2>
+            <p className="text-xs text-slate-400">Áreas que mais gosta, professores referência, networking e estágios alvo.</p>
+            <textarea className="royale-input w-full flex-1 p-3 text-sm resize-none custom-scroll" value={strategy?.future || ''} onChange={e => handleChange('future', e.target.value)} placeholder="Onde quero estagiar? Quem pode me indicar?"></textarea>
+          </div>
+
+          <div className="royale-panel p-6 flex flex-col gap-4 shadow-lg lg:col-span-1">
+            <h2 className="text-lg font-bold text-[#F3E5AB] flex items-center gap-2 border-b border-slate-700/50 pb-3">
+              <IconBook size={20} className="text-[#D4AF37]"/> Projetos Longos & TCC
+            </h2>
+            <p className="text-xs text-slate-400">Ideias para TCC, Iniciação Científica e Projetos de Extensão.</p>
+            <textarea className="royale-input w-full flex-1 p-3 text-sm resize-none custom-scroll" value={strategy?.longTerm || ''} onChange={e => handleChange('longTerm', e.target.value)} placeholder="Ideias para o projeto integrador/TCC..."></textarea>
+          </div>
+
+          <div className="royale-panel p-6 flex flex-col gap-4 shadow-lg lg:col-span-1 border-t-2 border-t-green-500">
+            <h2 className="text-lg font-bold text-green-400 flex items-center gap-2 border-b border-slate-700/50 pb-3">
+              <IconTarget size={20}/> Espaço da Vida Real
+            </h2>
+            <p className="text-xs text-slate-400">Engenharia já cobra demais. Burnout não melhora nota. Defina suas regras.</p>
+            <textarea className="royale-input w-full flex-1 p-3 text-sm resize-none custom-scroll border-green-900/30 bg-green-900/10" value={strategy?.realLife || ''} onChange={e => handleChange('realLife', e.target.value)} placeholder="Sono obrigatório: 7h. Dias de treino..."></textarea>
+          </div>
+        </div>
+      );
+    }
+
+    // --- POMODORO WIDGET ---
+    function PomodoroWidget() {
+      const [pomoTime, setPomoTime] = useState(25 * 60);
+      const [totalTime, setTotalTime] = useState(25 * 60);
+      const [pomoActive, setPomoActive] = useState(false);
+      const [pomoMode, setPomoMode] = useState('work'); 
+
+      useEffect(() => {
+        let interval = null;
+        if (pomoActive && pomoTime > 0) interval = setInterval(() => setPomoTime(t => t - 1), 1000);
+        else if (pomoTime === 0 && pomoActive) {
+          setPomoActive(false);
+          const nextMode = pomoMode === 'work' ? 'break' : 'work';
+          const nextTime = nextMode === 'work' ? 25 * 60 : 5 * 60;
+          setPomoMode(nextMode); setPomoTime(nextTime); setTotalTime(nextTime);
+        }
+        return () => clearInterval(interval);
+      }, [pomoActive, pomoTime, pomoMode]);
+
+      const formatTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+      const setMode = (mode, minutes) => { setPomoActive(false); setPomoMode(mode); setPomoTime(minutes * 60); setTotalTime(minutes * 60); };
+
+      const radius = 60; const circumference = 2 * Math.PI * radius;
+      const strokeDashoffset = circumference - (pomoTime / totalTime) * circumference;
+      const ringColor = pomoMode === 'work' ? '#D4AF37' : '#3B82F6';
+
+      return (
+        <div className="royale-panel p-6 flex flex-col items-center">
+          <h2 className="text-lg font-bold mb-6 text-white w-full flex items-center gap-2 border-b border-slate-700/50 pb-3">
+            <span className="text-[#D4AF37] bg-[#D4AF37]/10 p-1.5 rounded-lg"><IconClock size={18} /></span> Rotina & Prática
+          </h2>
+          <div className="flex justify-center gap-3 mb-8 w-full">
+            <button onClick={() => setMode('work', 25)} className={`flex-1 py-2 text-xs uppercase tracking-widest rounded-lg font-bold transition-all ${pomoMode === 'work' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/50 shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'bg-slate-800 text-slate-400'}`}>Bloco de Foco</button>
+            <button onClick={() => setMode('break', 5)} className={`flex-1 py-2 text-xs uppercase tracking-widest rounded-lg font-bold transition-all ${pomoMode === 'break' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'bg-slate-800 text-slate-400'}`}>Pausa Offline</button>
+          </div>
+          <div className="relative flex items-center justify-center mb-8">
+            <svg width="180" height="180" className="transform -rotate-90">
+              <circle cx="90" cy="90" r={radius} stroke="#1E293B" strokeWidth="8" fill="none" />
+              <circle cx="90" cy="90" r={radius} stroke={ringColor} strokeWidth="8" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="pomo-ring" />
+            </svg>
+            <div className="absolute flex flex-col items-center">
+              <span className="text-4xl font-black font-mono tracking-wider text-slate-100">{formatTime(pomoTime)}</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500 mt-1">{pomoMode === 'work' ? 'Exercícios/Teoria' : 'Descansando'}</span>
+            </div>
+          </div>
+          <div className="flex justify-center gap-4 w-full px-4">
+            <button onClick={() => setPomoActive(!pomoActive)} className={`flex-2 ${pomoActive ? 'bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white' : 'royale-btn-gold'} px-8 py-3 rounded-xl font-bold uppercase tracking-widest w-full text-sm`}>{pomoActive ? 'Pausar' : 'Iniciar'}</button>
+            <button onClick={() => setMode(pomoMode, pomoMode === 'work' ? 25 : 5)} className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-4 py-3 rounded-xl font-bold uppercase tracking-widest text-sm">Reset</button>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
