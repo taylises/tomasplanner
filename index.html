@@ -565,9 +565,10 @@
 
       const handleSaveClass = () => {
         if (!editingClass.obj.name.trim()) return;
+        const currentDayClasses = schedule[editingClass.day] || [];
         const dayArr = editingClass.isNew 
-          ? [...schedule[editingClass.day], editingClass.obj] 
-          : schedule[editingClass.day].map(c => c.id === editingClass.obj.id ? editingClass.obj : c);
+          ? [...currentDayClasses, editingClass.obj] 
+          : currentDayClasses.map(c => c.id === editingClass.obj.id ? editingClass.obj : c);
         
         dayArr.sort((a, b) => a.time.localeCompare(b.time));
         updateData('schedule', { ...schedule, [editingClass.day]: dayArr });
@@ -575,7 +576,8 @@
       };
 
       const handleDeleteClass = () => {
-        updateData('schedule', { ...schedule, [editingClass.day]: schedule[editingClass.day].filter(c => c.id !== editingClass.obj.id) });
+        const currentDayClasses = schedule[editingClass.day] || [];
+        updateData('schedule', { ...schedule, [editingClass.day]: currentDayClasses.filter(c => c.id !== editingClass.obj.id) });
         setEditingClass(null);
       };
 
@@ -612,13 +614,13 @@
             <p className="text-xs text-slate-400 mb-4 md:hidden italic text-center w-full">*Toque no card da cadeira para abrir as Opções e Provas.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-              {Object.keys(schedule).map(day => (
+              {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map(day => (
                 <div key={day} className="flex flex-col gap-3">
                   <div className="bg-slate-800/80 py-2.5 text-center rounded-lg border border-slate-700 shadow-inner">
                     <span className="text-[#F3E5AB] font-bold uppercase tracking-widest text-sm">{day}</span>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {schedule[day].map(c => {
+                    {(schedule[day] || []).map(c => {
                       const classMissionsCount = missions.filter(m => m.classId === c.id && m.status !== 'done').length;
                       return (
                         <div key={c.id} onClick={() => openClassModal(day, false, c)} className="royale-card p-4 cursor-pointer group hover:bg-slate-800/50">
